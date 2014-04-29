@@ -11,7 +11,7 @@ import com.assets.derivates.service.ComputeEntranceService;
 import com.assets.portfolio.correlation.entities.stock.StockList;
 import com.assets.portfolio.correlation.entities.stock.StockPrice;
 
-public class ComputeEntranceServiceImpl implements ComputeEntranceService {
+public class ComputeBasicEntranceServiceWithStdDevImpl implements ComputeEntranceService {
 
     private static final Integer SHORT_MEAN = 7;
     private static final Integer LONG_MEAN = 30;
@@ -20,7 +20,7 @@ public class ComputeEntranceServiceImpl implements ComputeEntranceService {
     public StockList computeEntrances(final StockList input) {
         List<StockDerivateInstantValue> values = extractValues(input);
         
-        List<StockPrice> entries = computeEntrances(values, input.getTicker());
+        List<StockPrice> entries = computeEntrances(values, input);
         
         return new StockList(entries, input.getTicker());
     }
@@ -55,33 +55,34 @@ public class ComputeEntranceServiceImpl implements ComputeEntranceService {
     }
 
 
-    private List<StockPrice> computeEntrances(List<StockDerivateInstantValue> values, String ticker) {
+    private List<StockPrice> computeEntrances(List<StockDerivateInstantValue> values, StockList input) {
         List<StockPrice> entryPoints = new ArrayList<>();
         for(int i = 0; i < values.size(); i++){
-            if(checkInputCondition(values, i)){
+            BigDecimal stdev = input.getStdDevLastSessions(LONG_MEAN, i);
+            if(checkInputCondition(values, i, stdev)){
                 StockDerivateInstantValue value = values.get(i);
-                entryPoints.add(new StockPrice(ticker, value.getInstant(), value.getCurrentValue()));
+                entryPoints.add(new StockPrice(input.getTicker(), value.getInstant(), value.getCurrentValue()));
             }
         }
         return entryPoints;
     }
 
-    private boolean checkInputCondition(List<StockDerivateInstantValue> values, int index) {
+    private boolean checkInputCondition(List<StockDerivateInstantValue> values, int index, BigDecimal stdDevMonth) {
         StockDerivateInstantValue value = values.get(index);
-        boolean previousValuesAreFalse = isPreviousValuesFalse(values, index);
-        return previousValuesAreFalse && checkInputCondition(value);
+        boolean previousValuesAreFalse = isPreviousValuesFalse(values, index, stdDevMonth);
+        return previousValuesAreFalse && checkInputCondition(value, stdDevMonth);
     }
 
-    private boolean isPreviousValuesFalse(List<StockDerivateInstantValue> values, int index) {
+    private boolean isPreviousValuesFalse(List<StockDerivateInstantValue> values, int index, BigDecimal stdDevMonth) {
         boolean value = false;
         for(int i = index - 1; i >= index - VALUES_TO_CHECK && i >= 0; i--){
-            value = value || checkInputCondition(values.get(i));
+            value = value || checkInputCondition(values.get(i), stdDevMonth);
         }
         return !value;
     }
 
-    private boolean checkInputCondition(StockDerivateInstantValue value) {
-        return  value.getCurrentValue().compareTo(value.getLongMeanValue()) < 0 
+    private boolean checkInputCondition(StockDerivateInstantValue value, BigDecimal stdDevMonth) {
+        return  value.getCurrentValue().compareTo(value.getLongMeanValue().subtract(stdDevMonth)) < 0 
                 && value.getCurrentDerivate().compareTo(BigDecimal.ZERO) > 0 
                 && value.getShortMeanDerivate().compareTo(BigDecimal.ZERO) > 0;
     }

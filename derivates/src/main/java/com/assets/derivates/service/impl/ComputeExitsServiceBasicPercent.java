@@ -12,7 +12,7 @@ import com.assets.portfolio.correlation.entities.enums.StatisticListType;
 import com.assets.portfolio.correlation.entities.stock.StockList;
 import com.assets.portfolio.correlation.entities.stock.StockPrice;
 
-public class ComputeExitsServiceImpl implements ComputeExitsService {
+public class ComputeExitsServiceBasicPercent implements ComputeExitsService {
 
     private static final BigDecimal PERCENT_UP = BigDecimal.valueOf(10);
     
